@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Companion AI</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; background: #121212; color: #f0f0f0; }
+  #messages { max-width: 600px; margin: auto; }
+  .message { margin: 10px 0; padding: 10px; border-radius: 8px; }
+  .user { background: #1f1f1f; text-align: right; }
+  .ai { background: #2c2c2c; text-align: left; }
+  #micBtn { margin-top: 20px; padding: 10px 20px; font-size: 16px; }
+</style>
+</head>
+<body>
+<h1>Companion AI</h1>
+<div id="messages"></div>
+<button id="micBtn">🎤 Click to Speak</button>
+
+<script>
+const OPENAI_API_KEY = "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"; // Your key
+const messagesDiv = document.getElementById("messages");
+const micBtn = document.getElementById("micBtn");
+
+// Display messages
+function displayMessage(sender, text) {
+  const div = document.createElement("div");
+  div.className = `message ${sender}`;
+  div.innerText = text;
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// Speak text using TTS
+function speak(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(utterance);
+}
+
+// Get GPT response directly from frontend
+async function getAIResponse(prompt) {
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await res.json();
+    return data.choices[0].message.content;
+  } catch (err) {
+    console.error(err);
+    return "Sorry, I couldn't get a response.";
+  }
+}
+
+// Speech recognition setup
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.continuous = true;
+recognition.interimResults = false;
+recognition.lang = 'en-US';
+
+recognition.onresult = async (event) => {
+  const transcript = event.results[event.results.length -1][0].transcript.trim();
+
+  // Wake word detection
+  if(transcript.toLowerCase().includes("hey companion ai")) {
+    displayMessage("user", transcript);
+    const question = transcript.replace(/hey companion ai/gi, "").trim();
+    const reply = await getAIResponse(question || "Hello!");
+    displayMessage("ai", reply);
+    speak(reply);
+  }
+};
+
+// Mic button triggers active listening
+micBtn.addEventListener("click", () => {
+  recognition.start();
+});
+
+// Auto-start passive listening
+recognition.start();
+
+</script>
+</body>
+</html>
